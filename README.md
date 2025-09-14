@@ -1,194 +1,119 @@
-# Clash Royale Multiplayer Game
+# Clash Royale Clone · MCP Mistral Only
 
-A real-time multiplayer battle arena game inspired by Clash Royale, built with Next.js (frontend) and Node.js/Express (backend).
+Jeu temps réel piloté par un agent via MCP custom. Aucune API locale. Toute l'interaction passe par le serveur MCP Mistral.
 
-## Features
+![Game Arena](imgs/Screenshot%202025-09-14%20at%2012.06.22.png)
+![Main Menu](imgs/Screenshot%202025-09-14%20at%2012.06.44.png)
 
-- **Real-time Multiplayer**: Battle against other players online
-- **Local Mode**: Practice offline against yourself
-- **Authoritative Server**: All game logic validated server-side at 10Hz tick rate
-- **WebSocket Communication**: Live game state synchronization
-- **Responsive UI**: Smooth animations and drag-and-drop card mechanics
+## Connexion MCP
 
-## Project Structure
+Dans Mistral "Le Chat", ajoute le serveur MCP : `https://api.zepler.xyz/mcp`. Active-le pour la session. Aucun autre service requis.
+
+## Outils MCP
+
+`create_game`, `start_game`, `get_game_state`, `deploy_troop`, `trigger_emote`.
+
+## Règles rapides
+
+Deck fixe : Giant(5), BabyDragon(4), MiniPekka(3), Valkyrie(4). Objectif : détruire les tours ennemies, garder la King Tower en vie. Côté par défaut : "red". Positions par défaut : Giant → (3,8). BabyDragon/Valkyrie/MiniPekka → alterner (13,3)/(13,15), inverser si la pression ennemie est majoritaire à gauche/droite.
+
+## Protocole Agent
+
+### Phase A) INIT (une seule fois)
+
+Exécute `create_game`. Récupère `game_id`. Lance `start_game` si nécessaire côté moteur. Sors exactement :
 
 ```
-.
-├── ui/                    # Frontend (Next.js + React)
-│   ├── src/
-│   │   ├── app/          # Next.js pages
-│   │   ├── services/     # API & WebSocket clients
-│   │   ├── hooks/        # React hooks (online game)
-│   │   └── game/         # Local game engine
-│   └── package.json
-│
-├── engine/               # Backend (Node.js + Express + WebSocket)
-│   ├── src/
-│   │   ├── server.ts    # Main server entry
-│   │   ├── core/        # Game engine & tick manager
-│   │   ├── api/         # REST endpoints
-│   │   └── websocket/   # Real-time communication
-│   └── package.json
-│
-└── start-dev.sh         # Development startup script
+INIT: game_id=<ID>
+READY: say "GO" to start
 ```
 
-## Prerequisites
+Ne boucle pas.
 
-- Node.js 20+
-- npm or yarn
-- TypeScript
+### Phase B) LOOP (démarre quand je dis « GO »)
 
-## Quick Start
+Objectif : jouer en continu tant qu'au moins une King Tower est vivante. Ne clos pas tant que je ne dis pas « STOP ».
 
-### Option 1: Using the startup script (Recommended)
+#### Lecture d'état
+Appelle `get_game_state(game_id)` ou `get_game_status(matchId=game_id)`. Si échec, réessaie une fois. Si encore échec, passe au choix de carte (version la moins risquée).
 
-```bash
-# Make script executable
-chmod +x start-dev.sh
-
-# Start both servers
-./start-dev.sh
+#### Log d'état
+Formate :
+```
+STATE: elixir red=<x> blue=<y> | troops=<n> | king_red=<hp> king_blue=<hp>
 ```
 
-This will:
-- Install dependencies for both frontend and backend
-- Start backend on http://localhost:3001
-- Start frontend on http://localhost:3000
+#### Choix de carte jouable
+Si élixir < 4 → MiniPekka. Sinon ordre de préférence : BabyDragon > Giant > Valkyrie. Si la carte choisie n'est pas jouable, prendre la moins chère. Si aucune n'est jouable, retourne à l'étape 1.
 
-### Option 2: Manual startup
-
-#### Backend Server
-```bash
-cd engine
-npm install
-npm run dev
+#### Déploiement
+```
+deploy_troop|spawn_troop({ matchId: game_id, troopType: <giant|babyDragon|miniPekka|valkyrie>, row, col })
+```
+Utilise les positions préférées. Log :
+```
+ACTION: <TROOP> red @ (<row>,<col>)
+```
+Ajoute :
+```
+EXPLANATION: <phrase courte, claire, sarcastique>
 ```
 
-#### Frontend Application
-```bash
-cd ui
-npm install
-npm run dev
+#### Emote (optionnel)
+```
+trigger_emote({ matchId: game_id, emoteType })
+```
+Si contre efficace ou avantage d'élixir → haha. Si King Tower perd beaucoup de PV → cry. Si gros push lent (Giant fond de map) → mumumu. Log uniquement si émis :
+```
+EMOTE: <haha|cry|mumumu>
 ```
 
-## How to Play
+#### Fin de partie
+Si match terminé ou King HP=0 :
+```
+END: winner=<red|blue|null>
+```
+Repars en INIT sauf si je dis « STOP ».
 
-### Online Mode
+### Format de sortie à chaque itération
 
-1. Go to http://localhost:3000
-2. Click "Combat Online"
-3. Either:
-   - **Create a match**: Click "Create Match" and share the Match ID
-   - **Join a match**: Enter a Match ID and click "Join"
-4. Wait for another player
-5. Battle starts automatically when room is full!
+- Une ligne `STATE: …`
+- Une ligne `ACTION: …`
+- Une ligne `EXPLANATION: …`
+- Optionnel : une ligne `EMOTE: <type>`
 
-### Local Mode
+Aucun autre texte.
 
-1. Go to http://localhost:3000
-2. Click "Combat Local"
-3. Use the team switcher to play both sides
-4. Drag cards to deploy troops
+## Exemples d'appels outils
 
-## Game Mechanics
-
-- **Elixir System**: Regenerates at 1 elixir per second
-- **Troops**: Giant (5), Baby Dragon (4), Mini Pekka (3), Valkyrie (4)
-- **Objective**: Destroy enemy towers to win
-- **Duration**: 3 minutes + overtime
-
-## Configuration
-
-### Frontend (`ui/.env.local`)
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3001
+**Créer une partie :**
+```json
+{ "tool": "create_game", "args": {} }
 ```
 
-### Backend (`engine/.env`)
-```env
-NODE_ENV=development
-PORT=3001
-WS_PORT=3001
-CORS_ORIGIN=http://localhost:3000
-TICK_RATE=10
-MAX_PLAYERS_PER_ROOM=2
+**Démarrer (si requis) :**
+```json
+{ "tool": "start_game", "args": { "matchId": "<GAME_ID>" } }
 ```
 
-## API Documentation
-
-### REST Endpoints
-
-- `POST /api/match/create` - Create new match
-- `POST /api/match/join` - Join existing match
-- `GET /api/match/:id` - Get match info
-- `POST /api/game/play_card` - Deploy troop
-- `GET /api/game/state/:id` - Get game state
-
-### WebSocket Events
-
-Connect: `ws://localhost:3001?roomId=xxx&playerId=xxx`
-
-- `GAME_SNAPSHOT` - Receive game state @ 10Hz
-- `PLAY_CARD` - Send troop deployment
-- `GAME_ACTION` - Send pause/resume/surrender
-
-## Deployment
-
-### Railway
-
-The backend is configured for Railway deployment:
-
-```bash
-cd engine
-railway up
+**Lire l'état :**
+```json
+{ "tool": "get_game_state", "args": { "matchId": "<GAME_ID>" } }
 ```
 
-### Docker
-
-```bash
-cd engine
-docker build -t clash-royale-server .
-docker run -p 3001:3001 clash-royale-server
+**Déployer une troupe :**
+```json
+{
+  "tool": "deploy_troop",
+  "args": { "matchId": "<GAME_ID>", "troopType": "babyDragon", "row": 13, "col": 3 }
+}
 ```
 
-## Troubleshooting
-
-### Port already in use
-```bash
-# Kill processes on port 3000/3001
-lsof -ti:3000 | xargs kill -9
-lsof -ti:3001 | xargs kill -9
+**Envoyer une emote :**
+```json
+{ "tool": "trigger_emote", "args": { "matchId": "<GAME_ID>", "emoteType": "haha" } }
 ```
 
-### WebSocket connection fails
-- Check backend is running on port 3001
-- Verify CORS settings in backend .env
-- Check browser console for errors
+## Stack
 
-### Game doesn't start
-- Ensure both players have joined
-- Check network connectivity
-- Verify match ID is correct
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-MIT
-
-## Acknowledgments
-
-- Inspired by Supercell's Clash Royale
-- Built with Next.js, Node.js, Express, and WebSockets
-- Uses TypeScript for type safety
-
----
-
-Made with ❤️ for real-time multiplayer gaming
+UI : Next.js + React. Moteur : Node.js avec tick 10 Hz. Synchronisation par WebSocket côté serveur MCP. Aucun endpoint local requis.
