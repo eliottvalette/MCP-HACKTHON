@@ -94,7 +94,7 @@ export class MCPTools {
         required: ['matchId', 'troopType', 'row', 'col']
       }
     });
-
+ 
     // Tool 5: Trigger Emote
     this.tools.push({
       name: 'trigger_emote',
