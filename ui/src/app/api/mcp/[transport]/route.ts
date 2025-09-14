@@ -27,6 +27,18 @@ const tools = [
     description: "Analyse une stratégie Clash Royale",
     inputSchema: { type: "object", properties: { situation: { type: "string" } }, required: ["situation"] },
   },
+  {
+    name: "send_emote",
+    description: "Envoie un emote dans le jeu pour narguer ou célébrer",
+    inputSchema: {
+      type: "object",
+      properties: {
+        game_id: { type: "string", description: "ID de la partie" },
+        emote_type: { type: "string", enum: ["heheheha", "mumumu", "pleuuurr"], description: "Type d'emote (heheheha pour rire, mumumu pour triste, pleuuurr pour pleurer)" },
+      },
+      required: ["game_id", "emote_type"],
+    },
+  },
 ];
 
 async function proxyApi(path: string, options: RequestInit) {
@@ -53,6 +65,16 @@ async function executeTool(name: string, args: any) {
     }
     case "analyze_strategy": {
       return { content: [{ type: "text", text: JSON.stringify({ situation: args.situation, recommendation: "Analyse côté serveur à brancher" }, null, 2) }] };
+    }
+    case "send_emote": {
+      const gameId = args?.game_id;
+      const emoteType = args?.emote_type;
+      const data = await proxyApi(`/api/match/${gameId}/emote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoteType })
+      });
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
     default: throw new Error(`Unknown tool: ${name}`);
   }
