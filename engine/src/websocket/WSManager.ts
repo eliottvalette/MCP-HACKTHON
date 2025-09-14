@@ -115,6 +115,10 @@ export class WSManager {
         this.handleGameAction(client, message.data);
         break;
 
+      case WSMessageType.SEND_EMOTE:
+        this.handleEmote(client, message.data);
+        break;
+
       case WSMessageType.PING:
         this.sendPong(client.ws);
         break;
@@ -157,6 +161,36 @@ export class WSManager {
         room.resumeGame();
         break;
     }
+  }
+
+  private handleEmote(client: WSClient, data: any): void {
+    if (!client.roomId || !client.playerId) return;
+
+    const room = this.rooms.get(client.roomId);
+    if (!room) return;
+
+    // NO RESTRICTIONS - anyone can send emotes anytime
+    const now = Date.now();
+
+    // Broadcast emote to all clients in room
+    const emoteMessage: WSMessage = {
+      type: WSMessageType.EMOTE_EVENT,
+      timestamp: now,
+      data: {
+        emoteType: data.emoteType,
+        playerId: client.playerId,
+        timestamp: now
+      }
+    };
+
+    const clients = room.getClients();
+    for (const roomClient of clients) {
+      if (roomClient.ws.readyState === WebSocket.OPEN) {
+        this.sendMessage(roomClient.ws, emoteMessage);
+      }
+    }
+
+    console.log(`[WSManager] Player ${client.playerId} sent emote: ${data.emoteType}`);
   }
 
   private handleDisconnection(client: WSClient): void {

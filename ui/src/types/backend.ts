@@ -132,6 +132,7 @@ export enum WSMessageType {
   LEAVE_ROOM = 'LEAVE_ROOM',
   PLAY_CARD = 'PLAY_CARD',
   GAME_ACTION = 'GAME_ACTION',
+  SEND_EMOTE = 'SEND_EMOTE',
   PING = 'PING',
 
   // Server -> Client
@@ -139,6 +140,7 @@ export enum WSMessageType {
   ROOM_LEFT = 'ROOM_LEFT',
   GAME_SNAPSHOT = 'GAME_SNAPSHOT',
   GAME_EVENT = 'GAME_EVENT',
+  EMOTE_EVENT = 'EMOTE_EVENT',
   ERROR = 'ERROR',
   PONG = 'PONG'
 }
@@ -152,4 +154,20 @@ export interface WSMessage {
 export interface PlayCardData {
   troopType: string;
   position: Position;
+}
+
+// Emote types
+export type EmoteType = 'heheheha' | 'mumumu' | 'pleuuurr';
+
+export interface EmoteData {
+  emoteType: EmoteType;
+  playerId: string;
+  timestamp: number;
+}
+
+export interface EmoteEvent {
+  emoteType: EmoteType;
+  playerId: string;
+  timestamp: number;
+  position?: Position; // Optional position for display
 }

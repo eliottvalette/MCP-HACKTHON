@@ -2,7 +2,9 @@ import {
   WSMessage,
   WSMessageType,
   GameSnapshot,
-  PlayCardData
+  PlayCardData,
+  EmoteType,
+  EmoteData
 } from '@/types/backend';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -12,6 +14,7 @@ export interface WebSocketOptions {
   onStatusChange?: (status: ConnectionStatus) => void;
   onError?: (error: Error) => void;
   onMessage?: (message: WSMessage) => void;
+  onEmote?: (emoteData: EmoteData) => void;
 }
 
 export class WebSocketClient {
@@ -94,6 +97,12 @@ export class WebSocketClient {
       case WSMessageType.ERROR:
         console.error('Server error:', message.data);
         this.options.onError?.(new Error(message.data?.message || 'Server error'));
+        break;
+
+      case WSMessageType.EMOTE_EVENT:
+        if (message.data) {
+          this.options.onEmote?.(message.data as EmoteData);
+        }
         break;
 
       case WSMessageType.PONG:
@@ -182,6 +191,14 @@ export class WebSocketClient {
       type: WSMessageType.GAME_ACTION,
       timestamp: Date.now(),
       data: { action }
+    });
+  }
+
+  sendEmote(emoteType: EmoteType): void {
+    this.send({
+      type: WSMessageType.SEND_EMOTE,
+      timestamp: Date.now(),
+      data: { emoteType }
     });
   }
 

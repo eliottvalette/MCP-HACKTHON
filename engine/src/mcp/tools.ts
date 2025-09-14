@@ -94,6 +94,27 @@ export class MCPTools {
         required: ['matchId', 'troopType', 'row', 'col']
       }
     });
+
+    // Tool 5: Send Emote
+    this.tools.push({
+      name: 'send_emote',
+      description: 'Send an emote in the game to taunt or celebrate',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          matchId: {
+            type: 'string',
+            description: 'The ID of the match'
+          },
+          emoteType: {
+            type: 'string',
+            enum: ['heheheha', 'mumumu', 'pleuuurr'],
+            description: 'Type of emote to send (heheheha for laughing, mumumu for sad, pleuuurr for crying)'
+          }
+        },
+        required: ['matchId', 'emoteType']
+      }
+    });
   }
 
   public getTools(): MCPTool[] {
@@ -114,6 +135,9 @@ export class MCPTools {
 
         case 'spawn_troop':
           return this.handleSpawnTroop(args, sessionId);
+
+        case 'send_emote':
+          return this.handleSendEmote(args, sessionId);
 
         default:
           return {
@@ -248,6 +272,43 @@ export class MCPTools {
     }
 
     const result = this.gameManager.spawnTroop(matchId, troopType, row, col, sessionId);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }]
+    };
+  }
+
+  private async handleSendEmote(args: any, sessionId?: string): Promise<MCPToolResult> {
+    const { matchId, emoteType } = args;
+
+    if (!matchId || !emoteType) {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            error: 'matchId and emoteType are required'
+          })
+        }]
+      };
+    }
+
+    // Validate emote type
+    const validEmotes = ['heheheha', 'mumumu', 'pleuuurr'];
+    if (!validEmotes.includes(emoteType)) {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            error: `Invalid emoteType. Must be one of: ${validEmotes.join(', ')}`
+          })
+        }]
+      };
+    }
+
+    const result = this.gameManager.sendEmote(matchId, emoteType, sessionId);
 
     return {
       content: [{

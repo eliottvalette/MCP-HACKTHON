@@ -7,7 +7,9 @@ import {
   TroopData,
   TowerData,
   CreateMatchResponse,
-  JoinMatchResponse
+  JoinMatchResponse,
+  EmoteType,
+  EmoteData
 } from '@/types/backend';
 
 export interface GameClientOptions {
@@ -15,6 +17,7 @@ export interface GameClientOptions {
   onStatusChange?: (status: ConnectionStatus) => void;
   onGameEnd?: (winner: 'red' | 'blue' | 'draw') => void;
   onError?: (error: Error) => void;
+  onEmote?: (emoteData: EmoteData) => void;
 }
 
 export class GameClient {
@@ -32,6 +35,7 @@ export class GameClient {
       onSnapshot: (snapshot) => this.handleSnapshot(snapshot),
       onStatusChange: (status) => this.options.onStatusChange?.(status),
       onError: (error) => this.options.onError?.(error),
+      onEmote: (emoteData) => this.options.onEmote?.(emoteData),
     });
   }
 

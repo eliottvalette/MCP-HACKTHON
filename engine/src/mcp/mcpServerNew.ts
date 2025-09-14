@@ -146,5 +146,29 @@ export const getMCPServer = (gameManager: MCPGameManager): any => {
     },
   );
 
+  // Send Emote Tool
+  server.tool(
+    "send_emote",
+    "Send an emote in the game to taunt or celebrate",
+    {
+      match_id: z.string().describe("ID of the match"),
+      emote_type: z.enum(["heheheha", "mumumu", "pleuuurr"])
+        .describe("Type of emote to send (heheheha for laughing, mumumu for sad, pleuuurr for crying)"),
+      session_id: z.string().optional().describe("Optional session ID to maintain context"),
+    },
+    async ({ match_id, emote_type, session_id }: { match_id: string; emote_type: 'heheheha' | 'mumumu' | 'pleuuurr'; session_id?: string }): Promise<CallToolResult> => {
+      const result = gameManager.sendEmote(match_id, emote_type, session_id);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
   return server;
 };

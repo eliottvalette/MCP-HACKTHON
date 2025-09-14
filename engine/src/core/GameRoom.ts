@@ -300,6 +300,10 @@ export class GameRoom {
     this.onSnapshotCallback = callback;
   }
 
+  public getPlayer(playerId: string): PlayerState | undefined {
+    return this.players.get(playerId);
+  }
+
   public getRoomInfo() {
     return {
       id: this.id,

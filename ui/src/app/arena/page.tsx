@@ -9,6 +9,7 @@ import { useOnlineGame } from "@/hooks/useOnlineGame";
 import TowerHealthBar from "@/components/TowerHealthBar";
 import ClashTimer from "@/components/ClashTimer";
 import GameEndScreen from "@/components/GameEndScreen";
+import Emote from "@/components/Emote";
 import { TroopType, TROOP_CONFIGS } from "@/game/types/Troop";
 import { gameEngine } from "@/game/GameEngine";
 import { GameStatus } from "@/types/backend";
@@ -181,6 +182,7 @@ function ArenaContent() {
     : localGame.isGamePaused;
   const gameEnded = isOnlineMode ? onlineGame.gameEnded : localGame.gameEnded;
   const winner = isOnlineMode ? onlineGame.winner : localGame.winner;
+  const currentEmote = isOnlineMode ? onlineGame.currentEmote : null;
 
   // Fetch game state for local mode only
   React.useEffect(() => {
@@ -639,6 +641,9 @@ function ArenaContent() {
             )}
           </div>
         </div>
+
+        {/* Emote Component - Display only */}
+        <Emote currentEmote={currentEmote} />
       </div>
     </div>
   );

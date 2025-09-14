@@ -5,8 +5,10 @@ import {
   CreateGameResponse,
   JoinGameResponse,
   GameStatusResponse,
-  SpawnTroopResponse
+  SpawnTroopResponse,
+  SendEmoteResponse
 } from './types';
+import { WSMessageType, EmoteType } from '@/types/server';
 
 export class MCPGameManager {
   private sessions: Map<string, MCPSession> = new Map();
@@ -331,6 +333,67 @@ export class MCPGameManager {
       troopId: `troop_${uuidv4().substring(0, 8)}`,
       message: `${troopType} deployed at position (${row}, ${col})`,
       elixirRemaining: Math.floor(player.elixir - cost)
+    };
+  }
+
+  public sendEmote(
+    matchId: string,
+    emoteType: string,
+    sessionId?: string
+  ): SendEmoteResponse {
+    const room = this.wsManager.getRoom(matchId);
+
+    if (!room) {
+      return {
+        success: false,
+        message: 'Game not found'
+      };
+    }
+
+    // Get session to know which player is sending the emote
+    let session = sessionId ? this.sessions.get(sessionId) : null;
+    let playerId: string;
+
+    if (!session) {
+      // If no session, try to find MCP player in the room
+      const roomInfo = room.getRoomInfo();
+      const mcpPlayer = roomInfo.players.find(p => p.id.startsWith('mcp_'));
+
+      if (mcpPlayer) {
+        playerId = mcpPlayer.id;
+      } else {
+        // Create a fake player ID for the emote
+        playerId = `mcp_emote_${Date.now()}`;
+      }
+    } else {
+      playerId = session.playerId;
+    }
+
+    // Broadcast emote to all clients in the room
+    const clients = room.getClients();
+    const emoteMessage = {
+      type: WSMessageType.EMOTE_EVENT,
+      timestamp: Date.now(),
+      data: {
+        emoteType: emoteType as EmoteType,
+        playerId,
+        timestamp: Date.now()
+      }
+    };
+
+    // Send to all connected clients
+    clients.forEach(client => {
+      if (client.ws.readyState === 1) { // WebSocket.OPEN
+        client.ws.send(JSON.stringify(emoteMessage));
+      }
+    });
+
+    console.log(`[MCPGameManager] Sent emote ${emoteType} to ${clients.length} clients in match ${matchId}`);
+
+    return {
+      success: true,
+      message: `Emote ${emoteType} sent successfully!`,
+      emoteType
     };
   }
 

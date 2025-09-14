@@ -113,3 +113,9 @@ export interface SpawnTroopResponse {
   message: string;
   elixirRemaining?: number;
 }
+
+export interface SendEmoteResponse {
+  success: boolean;
+  message: string;
+  emoteType?: string;
+}
