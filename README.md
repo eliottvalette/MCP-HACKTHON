@@ -1,166 +1,83 @@
-# 🎮 Clash Royale MCP - Mistral AI Hackathon 2025
+# Clash Royale MCP — Mistral AI Hackathon 2025
 
-**Real-time strategy game controlled entirely through Mistral's Custom MCP (Model Context Protocol)**
+An agent plays against you via MCP in split-screen: the UI on the left, a chat with the MCP agent on the right, and the whole match is driven in natural language.
 
 ![Game Arena](imgs/Screenshot%202025-09-14%20at%2012.06.22.png)
 ![Main Menu](imgs/Screenshot%202025-09-14%20at%2012.06.44.png)
 
-*Built during the Mistral AI MCP Hackathon, September 13-14, 2025 at La Maison, Paris*
+Built September 13–14, 2025 at La Maison, Paris.
 
-## 👥 Team
+## Idea
 
-- **Eliott Valette** (`@eliottvalette`)
-- **Mathias Garcia** (`@garciamathias`)
+Enable anyone to play live against an agent without pre-training. The LLM reasons over a structured game state, calls bounded tools, and acts in real time. Many concurrent matches run independently, each with its own room.
 
-Two people, 24 hours, zero sleep, one clear idea from minute one.
+## User Flow
 
-## 🏆 What We Built
+Open the UI (Vercel) and Le Chat connected to the MCP. Ask to create or join a match to obtain a `game_id`, then say “GO”. The agent reads the state, deploys troops, sends emotes, and explains its moves in short, dry comments. You keep playing in the UI while chatting. Say “STOP” to halt or “RESET” to start fresh. The exact loop and guardrails are documented in Prompt.md.
 
-A fully functional real-time strategy game where **Mistral AI agents can play Clash Royale** through custom MCP tools - no human interface required. The AI can create matches, deploy troops, trigger emotes, and engage in strategic gameplay entirely through Le Chat.
+## What the Agent Can Do
 
-## 🎯 The Hackathon Challenge
+The MCP server exposes tools for match lifecycle and gameplay. Core ones:
 
-The Mistral AI MCP Hackathon challenged us to push the boundaries of Le Chat by creating custom MCP servers. Our question was: **"Can an AI agent play a real-time strategy game as well as a human?"**
+* `create_game`, `join_game`
+* `get_game_status`
+* `spawn_troop`
+* `trigger_emote`
+* `list_games`
 
-Since Le Chat couldn't natively play games or control external applications, we built a complete gaming ecosystem accessible through MCP tools.
+## Example Dialogue (condensed)
 
-## 🚀 Technical Innovation
+**You :**
+Hey Le Chat, Let's play Clash Royale together!
 
-### MCP Tools We Created
-- `create_game` - Initialize new game matches
-- `join_game` - Connect to existing matches  
-- `get_game_status` - Real-time game state analysis
-- `spawn_troop` - Deploy units strategically
-- `trigger_emote` - Express emotions during gameplay
-- `list_games` - Browse available matches
 
-### Architecture Highlights
-- **Real-time Game Engine**: 60 FPS game loop with physics simulation
-- **WebSocket Synchronization**: Sub-100ms latency for multiplayer
-- **MCP Server Integration**: Custom protocol handlers for Mistral AI
-- **Strategic AI Interface**: Structured game state for optimal AI decision-making
+**Agent:**
+Hey, with pleasure, I started a game, go on *mcp-hackthon.vercel.app* and connect to the game with the game_id:
+game_id = c084e558-202c-4a37-9524-b8155798d8b2
+When you are ready, say "GO" to start the agent loop.
 
-### Why we rebuilt the game from scratch
-- Using the official APK is illegal. We chose to recreate the core mechanics faithfully and legally.
-- From-scratch rebuild gave us full control for MCP integration, deterministic state, and fast iteration.
+**You:**
+GO
 
-## 🎮 How It Works
+**Agent:**
+STATE: elixir red=6 blue=6 | troops=0 | king_red=4824 king_blue=4824
+ACTION: GIANT red @ (3,8)
+EXPLANATION: We start strong: Giant in the back to build pressure, like a pro. Mumumu.
+EMOTE: mumumu
 
-1. **Agent Initialization**: Mistral creates a game through MCP tools
-2. **Strategic Analysis**: AI analyzes battlefield state, troop positions, elixir levels
-3. **Decision Making**: AI chooses optimal troop deployments and timing
-4. **Real-time Execution**: Actions are executed in the live game engine
-5. **Continuous Adaptation**: AI responds to opponent moves and game events
+STATE: elixir red=3 blue=8 | troops=1 | king_red=4824 king_blue=4824
+ACTION: MINI_PEKKA red @ (13,3)
+EXPLANATION: With only 3 elixir, drop a Mini PEKKA left as preventive defense. Just in case.
 
-```json
-// Example MCP Tool Call
-{
-  "tool": "spawn_troop",
-  "args": {
-    "matchId": "game_123",
-    "troopType": "giant", 
-    "row": 15,
-    "col": 8
-  }
-}
-```
+STATE: elixir red=1 blue=10 | troops=2 | king_red=4824 king_blue=4824
+ACTION: No action possible, insufficient elixir.
+EXPLANATION: We wait like a noob for elixir to recover. dramatic sigh :/
 
-## 🧠 Hackathon Insights & Tricks
+STATE: elixir red=3 blue=3 | troops=3 | king_red=4824 king_blue=4824
+ACTION: MINI_PEKKA red @ (13,15)
+EXPLANATION: Add another Mini PEKKA on the right to balance pressure. Opponent clearly favors left.
+EMOTE: heheheha
 
-### What We Learned
+## Why This Matters
 
-**1. MCP Protocol Mastery**
-- Custom MCP servers need robust error handling - network issues during demos are unforgiving
-- Structured responses are crucial: AI agents perform better with consistent JSON schemas
-- Session management across MCP calls requires careful state tracking
+No reinforcement-learning pipeline, no data collection, no fragile screen parsing. Through a stable MCP API, a general-purpose LLM plays competently using common-sense reasoning, and you can spin up dozens of simultaneous human-vs-agent matches.
 
-**2. Real-time Game Development**
-- WebSocket heartbeats are essential for stable 48-hour hackathon demos
-- Game state synchronization becomes complex with multiple AI agents playing simultaneously
-- Visual feedback helps debugging when AI agents make unexpected moves
+## Architecture
 
-**3. AI Agent Design**
-- Agents need clear game rules and win conditions encoded in the MCP responses
-- Strategic decision trees work better than pure ML for real-time gameplay
-- Emote systems add personality - our AI became surprisingly expressive!
+A real-time engine (“GroundTruth”) runs on the backend and emits snapshots at a fixed tick rate. WebSocket keeps players and the agent in sync with sub-50 ms latency. A streamable HTTP MCP endpoint exposes the tools. The Next.js UI renders the match for humans and each match is an isolated room.
 
-### Clever Solutions
+## Deployment
 
-**Time Pressure Hacks:**
-- Used existing Clash Royale sprites to focus on gameplay mechanics
-- Implemented a simplified 4-troop deck to reduce complexity
-- Built modular MCP tools that could be tested independently
+Backend is on Railway (authoritative engine), UI is on Vercel at :[mcp-hackthon.vercel.app](https://mcp-hackthon.vercel.app) and the MCP endpoint is : [https://mcp-hackthon-production.up.railway.app/mcp](https://mcp-hackthon-production.up.railway.app/mcp)
 
-**Demo Day Strategies:**
-- Pre-loaded game states for consistent demonstrations
-- Created "AI vs AI" matches for entertaining autonomous gameplay
-- Added visual game state logging for judges to follow AI decision-making
+## Run a Match
 
-**Technical Shortcuts:**
-- Railway deployment for instant cloud hosting
-- Next.js API routes as MCP endpoint proxies
-- TypeScript for rapid development and fewer runtime errors
+1. Open the UI and start a match to get a `game_id`.
+2. In Le Chat, connect the MCP and ask to create or join using that `game_id`.
+3. Say “GO” to start the agent loop.
+4. Watch the agent play and comment; use “STOP” or “RESET” as needed.
 
-## 🎪 The Hackathon Experience
+## Team
 
-**La Maison, Paris — 24 Hours, No Sleep**
-
-- **Saturday 12:00 → 24:00**: Idea locked immediately. Rebuilt the game from scratch (legal/compliant), shipped a viable UI, and deployed to Vercel by midnight.
-- **00:00 → 07:30**: MCP setup marathon. We tested then discarded ~10 server architectures. Settled on a clean setup with the game engine on Railway ("GroundTruth") and a streamable MCP endpoint.
-- **07:30 → 09:30**: Feature additions and hardening. Fixed UI and engine behaviors impacted by MCP integration and deployment specifics.
-- **09:30 → 11:00**: Tuned the Mistral MCP Agent to play as intended (see `Prompt.md`).
-- **11:00 → 12:00**: Cleaned READMEs and recorded the submission video.
-
-**Team Dynamics:**
-- Split responsibilities: engine + UI + MCP split across two people; rapid pair-programming for tricky parts
-- Used Discord for coordination and quick decision-making
-- Leveraged Mistral's provided resources and cookbooks extensively
-
-**Unexpected Challenges:**
-- MCP session persistence across Le Chat conversations
-- Real-time game synchronization with variable network latency
-- Balancing game complexity vs. demo simplicity
-
-**Deployments & Infra Notes:**
-- Engine on Railway (treated as "GroundTruth" for state and synchronization)
-- UI on Vercel
-- Streamable MCP HTTP endpoint exposed by the engine for Le Chat tools
-
-## 🛠 Tech Stack
-
-**Frontend:** Next.js, React, TypeScript, Tailwind CSS
-**Backend:** Node.js, Express, WebSocket, TypeScript  
-**Game Engine:** Custom 60Hz tick system with collision detection
-**MCP Integration:** Custom JSON-RPC 2.0 server implementation
-**Deployment:** Railway (backend engine, GroundTruth), Vercel (frontend)
-**AI Integration:** Mistral Le Chat with custom MCP tools
-
-## 🎯 Results & Impact
-
-Our project demonstrated that **AI agents can engage in complex, real-time strategic gameplay** through well-designed MCP interfaces. The system successfully:
-
-- Enabled autonomous AI vs AI matches
-- Provided strategic decision-making capabilities
-- Maintained real-time performance under load
-- Created an entertaining and educational demonstration
-
-## 🚀 Try It Yourself
-
-**MCP Server:** `https://mcp-hackthon-production.up.railway.app/mcp`
-
-Add this to your Mistral Le Chat MCP connectors and start playing!
-
-**Example Commands:**
-```
-Create a new Clash Royale match and start playing strategically
-```
-
-## 🏅 Hackathon Recognition
-
-This project showcased the potential of MCP protocols for complex, stateful applications beyond traditional chatbot use cases. It demonstrated how AI agents can control sophisticated real-time systems through well-designed tool interfaces.
-
----
-
-*Built with ❤️ during 24 hours of non-stop coding at the Mistral AI MCP Hackathon*
-
-**"Can I already do this natively in Le Chat?"** - The hackathon's guiding question that led us to build something truly unique.
+Eliott Valette ([@eliottvalette](https://github.com/eliottvalette))
+Mathias Garcia ([@garciamathias](https://github.com/garciamathias))
